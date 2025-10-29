@@ -1,0 +1,44 @@
+### **SharePoint List Structure**
+
+**List: `Tickets_Working`**
+
+| Column Name | Type | Description |
+|------------|------|-------------|
+| TicketID | Number | Primary Key |
+| Title | Single line text | Auto = Ticket ID |
+| Category | Choice | IT, HR, Finance, Admin |
+| Status | Choice | New, In Progress, Pending, Closed |
+| Priority | Choice | Low, Medium, High, Urgent |
+| OwnerName | Single line text | |
+| OwnerEmail | Single line text | |
+| DueDate | Date and Time | |
+| CreatedDate | Date and Time | |
+| Description | Multiple lines text | |
+| DaysOverdue | Number | Calculated |
+| IsOverdue | Yes/No | Calculated |
+| LastSyncDate | Date and Time | Auto |
+
+**List: `Error_Report`**
+
+| Column Name | Type |
+|------------|------|
+| ErrorDate | Date and Time |
+| TicketID | Number |
+| FieldName | Single line text |
+| ErrorType | Choice |
+| CurrentValue | Single line text |
+| OwnerEmail | Single line text |
+| ErrorStatus | Choice (New, Notified, Fixed) |
+
+**List: `FollowUp_Log`**
+
+| Column Name | Type |
+|------------|------|
+| LogID | Single line text (Auto GUID) |
+| EmailSentDate | Date and Time |
+| RecipientEmail | Single line text |
+| TicketCount | Number |
+| TicketsIncluded | Multiple lines text |
+| EmailStatus | Choice (Sent, Bounced, Opened) |
+
+---
