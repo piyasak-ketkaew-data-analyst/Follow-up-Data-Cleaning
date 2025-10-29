@@ -36,7 +36,7 @@ let
     }),
 
     // ✅ เพิ่มคอลัมน์ "สถานะการปิด"
-    AddSameDayCheck = Table.AddColumn(ChangeType, "สถานะการปิด", each 
+    AddSameDayCheck = Table.AddColumn(ChangeType, "ChkCloStatus", each 
         if [Resolved Time] = null then 
            let
             DaysPassed = Duration.Days(DateTime.LocalNow() - [Created Time])
@@ -112,7 +112,7 @@ let
     ),
 
     // ✅ 🆕 เพิ่มคอลัมน์ "Cause of Issue(7)" ตามเงื่อนไข
-    AddCauseOfIssue7 = Table.AddColumn(AddWorkingHours, "Cause of Issue(7)", each
+    AddCauseOfIssue7 = Table.AddColumn(AddWorkingHours, "CauOfIssue(7)", each
         let
             CauseOfIssue = [#"Cause of Issue"],  // Column G
             TicketCancelled = [#"Ticket Cancelled"]  // Column AX
@@ -124,7 +124,7 @@ let
     ),
 
     // ✅ 🆕 เพิ่มคอลัมน์ "Cause of Outstanding(8)" ตามเงื่อนไข
-    AddCauseOfOutstanding8 = Table.AddColumn(AddCauseOfIssue7, "Cause of Outstanding(8)", each
+    AddCauseOfOutstanding8 = Table.AddColumn(AddCauseOfIssue7, "CauOfOutstanding(8)", each
         let
             CauseOfOutstanding = [#"Cause of Outstanding"],  // Column H
             TicketCancelled = [#"Ticket Cancelled"],  // Column AX
