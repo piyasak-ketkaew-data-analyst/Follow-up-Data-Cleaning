@@ -259,34 +259,50 @@ AddChk1Tier9 = Table.AddColumn(AddChkType54, "Chk1Tier(9)", each
         else
             null
 ),
-// ✅ เพิ่มคอลัมน์ CreEmail ตามเงื่อนไข
-AddCreEmail = Table.AddColumn(AddChk1Tier9, "CreEmail", each
-    let
-        Category = [Category],               // Column F
-        TierAgent = [#"1st Tier Agent"],     // Column I
-        Agent = [Agent],                     // Column AS
+// function ช่วยตรวจว่า Agent (fullname) ตรงกับ fullname ใน mapping ไหม (case-insensitive)
+        AgentMatches = (shortName as text) =>
+            Text.Upper(Agent) = Text.Upper(Record.FieldOrDefault(FullNameOf, shortName, "")),
 
-        ToEmail = (name as text) => Text.Lower(name) & "@sec.or.th"
+        // function ตรวจว่า TierAgent เป็น shortname ที่เรารู้จักหรือไม่ (case-sensitive as provided)
+        TierIs = (short as text) => Text.Upper(TierAgent) = Text.Upper(short),
+
+        // ตัดสินใจผลลัพธ์
+        result =
+            if Category = "ระบบงานภายใน" then
+                // ถ้าเป็นระบบงานภายใน ให้แมปจาก TierAgent ถ้า TierAgent เป็นคนที่รู้จัก
+                // ถ้า TierAgent ไม่ได้แม็พ แต่ Agent เป็นชื่อเต็มที่รู้จัก ให้แมปจาก Agent
+                // มิฉะนั้น คืนค่า Agent เดิม
+                if TierAgent <> "" and (
+                    TierIs("Pipat") or TierIs("Chaiyaporn") or TierIs("Panod") or TierIs("Yutthakan") or TierIs("Piyasak") or TierIs("Pongtorn") or TierIs("Issara") or TierIs("Khosit") or TierIs("Suchada")
+                ) then
+                    // ถ้า TierAgent ระบุชื่อสั้น ให้คืนอีเมลของ TierAgent เสมอ
+                    ToEmail(TierAgent)
+                else if AgentMatches("pipat") then ToEmail("pipat")
+                else if AgentMatches("chaiyaporn") then ToEmail("chaiyaporn")
+                else if AgentMatches("panod") then ToEmail("panod")
+                else if AgentMatches("yutthakan") then ToEmail("yutthakan")
+                else if AgentMatches("piyasak") then ToEmail("piyasak")
+                else if AgentMatches("pongtorn") then ToEmail("pongtorn")
+                else if AgentMatches("issara") then ToEmail("issara")
+                else if AgentMatches("khosit") then ToEmail("khosit")
+                else if AgentMatches("suchada") then ToEmail("suchada")
+                else Agent
+
+            else
+                // ถ้าไม่ใช่ระบบงานภายใน ให้แมปจาก Agent (ชื่อเต็ม) เป็น short->email
+                if AgentMatches("pipat") then ToEmail("pipat")
+                else if AgentMatches("chaiyaporn") then ToEmail("chaiyaporn")
+                else if AgentMatches("panod") then ToEmail("panod")
+                else if AgentMatches("yutthakan") then ToEmail("yutthakan")
+                else if AgentMatches("piyasak") then ToEmail("piyasak")
+                else if AgentMatches("pongtorn") then ToEmail("pongtorn")
+                else if AgentMatches("issara") then ToEmail("issara")
+                else if AgentMatches("khosit") then ToEmail("khosit")
+                else if AgentMatches("suchada") then ToEmail("suchada")
+                else Agent
     in
-        if Category = "ระบบงานภายใน" then
-            if (TierAgent = "Pipat" or TierAgent = "Chaiyaporn") and Agent <> "PIPAT VACHIRAROJPAISAL" then ToEmail("pipat")
-            else if TierAgent = "Chaiyaporn" and Agent <> "CHAIYAPORN HEAWPECH" then ToEmail("chaiyaporn")
-            else if TierAgent = "Panod" and Agent <> "PANOD SUYANON" then ToEmail("panod")
-            else if TierAgent = "Yutthakan" and Agent <> "YUTTHAKAN CHUENKLIN" then ToEmail("yutthakan")
-            else if TierAgent = "Piyasak" and Agent <> "PIYASAK KETKAEW" then ToEmail("piyasak")
-            else if TierAgent = "Pongtorn" and Agent <> "PONGTORN SOONTORN" then ToEmail("pongtorn")
-            else Agent
-
-        else if Category <> "ระบบงานภายใน" then
-            if Agent = "PIPAT VACHIRAROJPAISAL" then ToEmail("pipat")
-            else if Agent = "CHAIYAPORN HEAWPECH" then ToEmail("chaiyaporn")
-            else if Agent = "PANOD SUYANON" then ToEmail("panod")
-            else if Agent = "YUTTHAKAN CHUENKLIN" then ToEmail("yutthakan")
-            else if Agent = "PIYASAK KETKAEW" then ToEmail("piyasak")
-            else if Agent = "PONGTORN SOONTORN" then ToEmail("pongtorn")
-            else Agent
-
-        else Agent
+        result
 )
 in
     AddCreEmail
+
