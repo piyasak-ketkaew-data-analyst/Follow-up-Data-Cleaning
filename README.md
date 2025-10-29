@@ -4,10 +4,10 @@ Cleaning Data and Follow up by Automation
 
 ### **Phase 1: Setup (1-2 วัน)**
 1. ✅ เตรียม Excel File จาก FreshService(CSV Export)
-   • Excel (Data Transformation)
-   • ทำ Cleaning (Power Query For Cleaning Data)
-   • คำนวณ Derived Fields
-   • Filter เอาเฉพาะข้อมูลที่ต้องการ
+1.1 Excel (Data Transformation)
+1.2 ทำ Cleaning (Power Query For Cleaning Data)
+1.3 คำนวณ Derived Fields
+1.4 Filter เอาเฉพาะข้อมูลที่ต้องการ
 3. ✅ เตรียม Excel File บน OneDrive/SharePoint
 4. ✅ สร้าง Table ทั้ง 4 Sheets
 5. ✅ ใส่ข้อมูลตัวอย่าง
