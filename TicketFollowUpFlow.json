@@ -1,0 +1,59 @@
+{
+    "name": "TicketFollowUpFlow",
+    "type": "Flow",
+    "definition": {
+        "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+        "contentVersion": "1.0.0.0",
+        "parameters": {},
+        "triggers": {
+            "Recurrence": {
+                "type": "Recurrence",
+                "recurrence": {
+                    "frequency": "Day",
+                    "interval": 1
+                }
+            }
+        },
+        "actions": {
+            "Get_Tickets": {
+                "type": "ApiConnection",
+                "inputs": {
+                    "host": {
+                        "connectionName": "shared_excelonlinebusiness"
+                    },
+                    "operationId": "GetRows",
+                    "parameters": {
+                        "table": "Tickets"
+                    }
+                },
+                "runAfter": {}
+            },
+            "Condition": {
+                "type": "If",
+                "expression": "@equals(body('Get_Tickets')?['IsRead'], false)",
+                "actions": {
+                    "SendEmail": {
+                        "type": "ApiConnection",
+                        "inputs": {
+                            "host": {
+                                "connectionName": "shared_office365"
+                            },
+                            "operationId": "SendEmailV2",
+                            "parameters": {
+                                "To": "@{body('Get_Tickets')?['Email']}",
+                                "Subject": "Follow up for ticket @{body('Get_Tickets')?['TicketID']}",
+                                "Body": "<p>Your ticket is still pending.</p>"
+                            }
+                        },
+                        "runAfter": {}
+                    }
+                },
+                "runAfter": {
+                    "Get_Tickets": [
+                        "Succeeded"
+                    ]
+                }
+            }
+        }
+    }
+}
