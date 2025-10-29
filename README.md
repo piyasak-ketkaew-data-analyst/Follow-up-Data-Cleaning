@@ -8,10 +8,10 @@ Cleaning Data and Follow up by Automation
 1.2 ทำ Cleaning (Power Query For Cleaning Data)
 1.3 คำนวณ Derived Fields
 1.4 Filter เอาเฉพาะข้อมูลที่ต้องการ
-3. ✅ เตรียม Excel File บน OneDrive/SharePoint
-4. ✅ สร้าง Table ทั้ง 4 Sheets
-5. ✅ ใส่ข้อมูลตัวอย่าง
-6. ✅ Test Connection จาก Power Automate
+2. ✅ เตรียม Excel File บน OneDrive/SharePoint
+3. ✅ สร้าง Table ทั้ง 4 Sheets
+4. ✅ ใส่ข้อมูลตัวอย่าง
+5. ✅ Test Connection จาก Power Automate
 
 ### **Phase 2: Build Flow 1 - Data Validation (2-3 วัน)**
 1. ✅ สร้าง Trigger + List rows
