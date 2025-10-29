@@ -1,0 +1,292 @@
+let
+    // ✅ ดึงข้อมูลจากตาราง
+    Source = Excel.CurrentWorkbook(){[Name="TableData"]}[Content],
+
+    // เพิ่ม Column BN ตามเงื่อนไข
+    AddColumnBJ = Table.AddColumn(Source, "Onboard", each
+    let
+            RequesterName = [#"Requester Name"],
+            Subject = [Subject],
+            TicketCancelled = [#"Ticket Cancelled"]
+        in
+            if RequesterName = "ESS-HRIS-NoReply@sec.or.th" and TicketCancelled <> "TRUE" then
+                if Text.Contains(Subject, "Mail Action: แจ้งรายชื่อพนักงานออกจากงาน") then
+                    "แจ้งรายชื่อพนักงานออกจากงาน Ticket นี้ให้ทำ Canceled ด้วย"
+                else if Text.Contains(Subject, "แจ้งรายชื่อพนักงานเข้าใหม่") then
+                    "แจ้งรายชื่อพนักงานเข้าใหม่ Ticket นี้ให้ทำ Canceled ด้วย"
+                else
+                    null
+            else
+                null
+    ),
+    
+    // ✅ กรองข้อมูล
+    FilteredRows = Table.SelectRows(AddColumnBJ, each not (
+        (
+            ([Category] = "ระบบงาน Online" and [Group] <> "Client Support")
+            or
+            ([Category] = "อื่นๆ" and [Group] <> "Client Support")
+        )
+    )),
+
+    // ✅ แปลงชนิดข้อมูล
+    ChangeType = Table.TransformColumnTypes(FilteredRows,{
+        {"Created Time", type datetime}, 
+        {"Resolved Time", type datetime}
+    }),
+
+    // ✅ เพิ่มคอลัมน์ "สถานะการปิด"
+    AddSameDayCheck = Table.AddColumn(ChangeType, "สถานะการปิด", each 
+        if [Resolved Time] = null then 
+           let
+            DaysPassed = Duration.Days(DateTime.LocalNow() - [Created Time])
+        in
+            if DaysPassed > 1 then
+                "ยังไม่ปิด (" & Number.ToText(DaysPassed) & " วัน)"
+            else
+                "ยังไม่ปิด"
+        else
+            let
+                CreateDate = Date.From([Created Time]),
+                ResolveDate = Date.From([Resolved Time]),
+                CreateTimeOnly = Time.From([Created Time]),
+                ResolveTimeOnly = Time.From([Resolved Time]),
+                StartWork = #time(8,0,0),
+                EndWork = #time(18,0,0),
+                IsSameDay = CreateDate = ResolveDate,
+                IsCreateInWorkingHours = CreateTimeOnly >= StartWork and CreateTimeOnly <= EndWork,
+                IsResolveInWorkingHours = ResolveTimeOnly <= EndWork
+            in
+                if IsSameDay and IsCreateInWorkingHours and IsResolveInWorkingHours then 
+                    "ปิดภายในวันเดียว"
+                else 
+                    "Pending ข้ามวัน"
+    ),
+
+    // ✅ เพิ่มคอลัมน์ Working Hours (แสดงผลแบบ HH:mm)
+    AddWorkingHours = Table.AddColumn(AddSameDayCheck, "Working Hours", each 
+        if [Resolved Time] = null then 
+            null
+        else
+            let
+                CreateDate = Date.From([Created Time]),
+                ResolveDate = Date.From([Resolved Time]),
+                CreateTimeOnly = Time.From([Created Time]),
+                ResolveTimeOnly = Time.From([Resolved Time]),
+                StartWork = #time(8,0,0),
+                EndWork = #time(18,0,0),
+
+                // ปรับเวลาให้อยู่ในช่วงเวลาทำงาน
+                AdjCreateTime = 
+                    if CreateTimeOnly < StartWork then StartWork
+                    else if CreateTimeOnly > EndWork then EndWork
+                    else CreateTimeOnly,
+
+                AdjResolveTime = 
+                    if ResolveTimeOnly < StartWork then StartWork
+                    else if ResolveTimeOnly > EndWork then EndWork
+                    else ResolveTimeOnly,
+
+                // คำนวณชั่วโมงทั้งหมด
+                RawHours = 
+                    if CreateDate = ResolveDate then
+                        Duration.TotalHours(AdjResolveTime - AdjCreateTime)
+                    else
+                        let
+                            DaysDiff = Duration.Days(ResolveDate - CreateDate),
+                            FirstDay = Duration.TotalHours(EndWork - AdjCreateTime),
+                            MiddleDays = if DaysDiff > 1 then (DaysDiff - 1) * 10 else 0,
+                            LastDay = Duration.TotalHours(AdjResolveTime - StartWork)
+                        in
+                            FirstDay + MiddleDays + LastDay,
+
+                // แปลงชั่วโมงเป็นรูปแบบ HH:mm
+                TotalMinutes = Number.Round(RawHours * 60, 0),
+                HoursPart = Number.IntegerDivide(TotalMinutes, 60),
+                MinutesPart = Number.Mod(TotalMinutes, 60),
+
+                // ปรับรูปแบบ HH:mm
+                TextResult = Text.PadStart(Text.From(HoursPart), 2, "0") & ":" & Text.PadStart(Text.From(MinutesPart), 2, "0")
+            in
+                TextResult
+    ),
+
+    // ✅ 🆕 เพิ่มคอลัมน์ "Cause of Issue(7)" ตามเงื่อนไข
+    AddCauseOfIssue7 = Table.AddColumn(AddWorkingHours, "Cause of Issue(7)", each
+        let
+            CauseOfIssue = [#"Cause of Issue"],  // Column G
+            TicketCancelled = [#"Ticket Cancelled"]  // Column AX
+        in
+            if CauseOfIssue = "" and TicketCancelled <> "TRUE" then
+                "Cause of Issue(7)"
+            else
+                null
+    ),
+
+    // ✅ 🆕 เพิ่มคอลัมน์ "Cause of Outstanding(8)" ตามเงื่อนไข
+    AddCauseOfOutstanding8 = Table.AddColumn(AddCauseOfIssue7, "Cause of Outstanding(8)", each
+        let
+            CauseOfOutstanding = [#"Cause of Outstanding"],  // Column H
+            TicketCancelled = [#"Ticket Cancelled"],  // Column AX
+            StatusClose = [#"สถานะการปิด"]  // Column BH
+        in
+            if CauseOfOutstanding = "" and TicketCancelled <> "TRUE" then
+                if StatusClose = "Pending ข้ามวัน" then
+                    "CauseOutstanding(8)=Pending ข้ามวัน(8.1)"
+                else if Text.StartsWith(StatusClose, "ยังไม่ปิด") then
+                    "Cause of Outstanding=ยังไม่ปิด(8.2)"
+                else
+                    null
+            else
+                null
+    ),
+
+    // ✅ 🆕 เพิ่มคอลัมน์ "FRStatus(22)" ตามเงื่อนไข
+    AddFRStatus22 = Table.AddColumn(AddCauseOfOutstanding8, "FRStatus(22)", each
+        let
+            FirstResponseStatus = [#"First Response Status"],  // Column V
+            TicketCancelled = [#"Ticket Cancelled"],  // Column AX
+            CreatedTime = [#"Created Time"],  // Column V (Created Time)
+            CreatedTimeOnly = Time.From(CreatedTime),
+            BreakTimeStart = #time(11, 59, 0),
+            BreakTimeEnd = #time(12, 59, 59)
+        in
+            if TicketCancelled <> "TRUE" then
+                // ตรวจสอบช่วงเวลาพักก่อน
+                if (FirstResponseStatus = "" or FirstResponseStatus = "SLA Violated") 
+                   and CreatedTimeOnly >= BreakTimeStart 
+                   and CreatedTimeOnly <= BreakTimeEnd then
+                    "ช่วงเวลาพัก(22)"
+                // ถ้าไม่ใช่ช่วงเวลาพัก แต่ First Response Status เป็นค่าว่าง
+                else if FirstResponseStatus = "" then
+                    "First Response Status เป็นค่าว่าง"
+                else
+                    null
+            else
+                null
+    ),
+
+    // ✅ 🆕 เพิ่มคอลัมน์ "OperCat(30)" ตามเงื่อนไข
+    AddOperCat30 = Table.AddColumn(AddFRStatus22, "OperCat(30)", each
+        let
+            Category = [Category],  // Column F
+            CauseOfIssue = [#"Cause of Issue"],        // Column G
+            OperationCategory = [#"Operation Category"],  // Column AD
+            OperationSubCategory = [#"Operation Sub-Category"],  // Column AE
+            CauseOfIssueText = Text.Trim(if CauseOfIssue = null then "" else Text.From(CauseOfIssue))
+        in
+            if Category <> "ระบบงานภายใน" and OperationCategory = "User Operation" and OperationSubCategory = "User Request (Application)" then
+            "User Request (Application)ใช้กับระบบงานภายในเท่านั้น(30)"
+        else if Category="Hardware" and OperationCategory = "System Operation" then
+            "Hardware เสีย Operation Category จะต้องเป็น Hardware Operation"
+        else if List.Contains({"ติดตั้ง","ขอสิทธิ์","ยืม","เตรียมเครื่อง","เปลี่ยนเครื่อง","ติด"}, CauseOfIssueText) and OperationCategory <> "Client Operation" then
+            "เคสนี้ Operation Category ควรจะเป็น Client Operation"
+        else      
+                null
+    ),
+
+    // ✅ 🆕 เพิ่มคอลัมน์ "ChkGropu(24)" ตามเงื่อนไข
+    AddChkGroup24 = Table.AddColumn(AddOperCat30, "ChkGroup(24)", each 
+        let 
+            Category = [Category], // column F
+            Gropu = [Group], // Column X
+            SubCategory = [#"Sub-Category"]   // Column AV ใส่ # หาก column มี อักขรพิเศษ
+        in 
+            if Category = "ระบบงานภายใน" and [Group] = "Application Support" then 
+            "Application Support รับผิดชอบเฉพาะเคสระบบงาน Online เท่านั้น"
+            else if SubCategory = "IDM" and [Group] <> "Security Team" then
+            "IDM เป็นงานของ Security Team"
+            else 
+                null
+    ),
+// ✅ 🆕 เพิ่มคอลัมน์ "ChkResolType(42)" เคสปิดแล้วแต่ Resolution Type ยังเป็นค่าว่าง
+AddChkResolType42 = Table.AddColumn(AddChkGroup24, "ChkResolType(42)", each
+    let
+        ResolutionType = [#"Resolution Type"],     // Column AP
+        Status = [Status]                          // Column AU
+    in
+        if List.Contains({"Resolve","Close"}, Status) and (ResolutionType = null or Text.Trim(Text.From(ResolutionType)) = "") then
+            "เคสนี้ปิดแล้วแต่ Resolution Type ยังเป็นค่าว่าง"
+        else
+            null
+),
+
+// ✅ 🆕 เพิ่มคอลัมน์ "ChkAgent(45)" Agent จะต้องไม่เป็นค่าว่าง
+AddChkAgent45 = Table.AddColumn(AddChkResolType42, "ChkAgent(45)", each
+    let
+        Agent = [Agent]                            // Column AS
+    in
+        if Agent = null or Text.Trim(Text.From(Agent)) = "" or Text.Trim(Text.From(Agent)) = "No Agent" then
+            "เคสนี้ยังไม่มี Agent"
+        else
+            null
+),
+
+// ✅ 🆕 เพิ่มคอลัมน์ "ChkTKCancel(50)" Ticket Cancel เป็นค่าว่าง
+AddChkTKCancel50 = Table.AddColumn(AddChkAgent45, "ChkTKCancel(50)", each
+    let
+        TicketCancelled = [#"Ticket Cancelled"]     // Column AX
+    in
+        if TicketCancelled = null or Text.Trim(Text.From(TicketCancelled)) = "" then
+            "ค่าว่างใน Ticket Canceled"
+        else
+            null
+),
+
+// ✅ 🆕 เพิ่มคอลัมน์ "ChkType(54)" ตรวจสอบ Ticket Type
+AddChkType54 = Table.AddColumn(AddChkTKCancel50, "ChkType(54)", each
+    let
+        Type = [Type],                              // Column BB
+        OperationCategory = [#"Operation Category"], // Column AD
+        OperationCategoryOld = [#"Operation Category Old"], // Column AD (Old)
+        OpCatOldText = if OperationCategoryOld = null then "" else Text.From(OperationCategoryOld)
+    in
+        if Type = "Incident"
+            and OperationCategory = "Client Operation"
+            and Text.StartsWith(OpCatOldText, "IMAC")
+        then "Ticket นี้เป็น Service Request หรือเปล่า"
+        else null
+),
+
+// ✅ 🆕 เพิ่มคอลัมน์ "Chk1Tier(9)" ตรวจสอบ 1st Tier Agent เป็นค่าว่าง (เฉพาะระบบงานภายใน)
+AddChk1Tier9 = Table.AddColumn(AddChkType54, "Chk1Tier(9)", each
+    let
+        TierAgent = [#"1st Tier Agent"],   // Column I
+        Category = [Category]               // Column F
+    in
+        if Category = "ระบบงานภายใน" and (TierAgent = null or Text.Trim(Text.From(TierAgent)) = "") then
+            "Ticket นี้ยังไม่มี 1 Tier"
+        else
+            null
+),
+// ✅ เพิ่มคอลัมน์ CreEmail ตามเงื่อนไข
+AddCreEmail = Table.AddColumn(AddChk1Tier9, "CreEmail", each
+    let
+        Category = [Category],               // Column F
+        TierAgent = [#"1st Tier Agent"],     // Column I
+        Agent = [Agent],                     // Column AS
+
+        ToEmail = (name as text) => Text.Lower(name) & "@sec.or.th"
+    in
+        if Category = "ระบบงานภายใน" then
+            if (TierAgent = "Pipat" or TierAgent = "Chaiyaporn") and Agent <> "PIPAT VACHIRAROJPAISAL" then ToEmail("pipat")
+            else if TierAgent = "Chaiyaporn" and Agent <> "CHAIYAPORN HEAWPECH" then ToEmail("chaiyaporn")
+            else if TierAgent = "Panod" and Agent <> "PANOD SUYANON" then ToEmail("panod")
+            else if TierAgent = "Yutthakan" and Agent <> "YUTTHAKAN CHUENKLIN" then ToEmail("yutthakan")
+            else if TierAgent = "Piyasak" and Agent <> "PIYASAK KETKAEW" then ToEmail("piyasak")
+            else if TierAgent = "Pongtorn" and Agent <> "PONGTORN SOONTORN" then ToEmail("pongtorn")
+            else Agent
+
+        else if Category <> "ระบบงานภายใน" then
+            if Agent = "PIPAT VACHIRAROJPAISAL" then ToEmail("pipat")
+            else if Agent = "CHAIYAPORN HEAWPECH" then ToEmail("chaiyaporn")
+            else if Agent = "PANOD SUYANON" then ToEmail("panod")
+            else if Agent = "YUTTHAKAN CHUENKLIN" then ToEmail("yutthakan")
+            else if Agent = "PIYASAK KETKAEW" then ToEmail("piyasak")
+            else if Agent = "PONGTORN SOONTORN" then ToEmail("pongtorn")
+            else Agent
+
+        else Agent
+)
+in
+    AddCreEmail
