@@ -1,22 +1,22 @@
 ### **SharePoint List Structure**
 
-**List: `Tickets_Working`**
+**List: `Tickets_Working`**                                                        **List: `TableData Tickets`**
 
-| Column Name | Type | Description |
-|------------|------|-------------|
-| TicketID | Number | Primary Key |
-| Title | Single line text | Auto = Ticket ID |
-| Category | Choice | IT, HR, Finance, Admin |
-| Status | Choice | New, In Progress, Pending, Closed |
-| Priority | Choice | Low, Medium, High, Urgent |
-| OwnerName | Single line text | |
-| OwnerEmail | Single line text | |
-| DueDate | Date and Time | |
-| CreatedDate | Date and Time | |
-| Description | Multiple lines text | |
-| DaysOverdue | Number | Calculated |
-| IsOverdue | Yes/No | Calculated |
-| LastSyncDate | Date and Time | Auto |
+| Column Name | Type | Description |                                            | Column Name | Type | Description |                                    
+|------------|------|-------------|                                             |------------|------|-------------|
+| TicketID | Number | Primary Key |                                             | Ticket Id | Number | Primary Key |
+| Title | Single line text | Auto = Ticket ID |                                   Title | Single line text | Auto = Ticket ID |
+| Category | Choice | IT, HR, Finance, Admin |                                  | Category | Choice | IT, HR, Finance, Admin |
+| Status | Choice | New, In Progress, Pending, Closed |                         | Status | Choice | New, In Progress, Pending, Closed |
+| Priority | Choice | Low, Medium, High, Urgent |                               | Priority | Choice | Low, Medium, High, Urgent |
+| OwnerName | Single line text | |                                              | Agent | Single line text | |
+| OwnerEmail | Single line text | |                                             | CreEmail | Single line text | |
+| DueDate | Date and Time | |                                                   | Due by Time | Date and Time | |
+| CreatedDate | Date and Time | |                                               | Created Time | Date and Time | |
+| Description | Multiple lines text | |                                         | Description | Multiple lines text | | *** [ใส่รายละเอียดในก้ามปูให้หน่อย] ***
+| DaysOverdue | Number | Calculated |                                           | DaysOverdue | Number | Calculated |
+| IsOverdue | Yes/No | Calculated |                                             | IsOverdue | Yes/No | Calculated |
+| LastSyncDate | Date and Time | Auto |                                         | LastSyncDate | Date and Time | Auto |
 
 **List: `Error_Report`**
 
@@ -40,5 +40,6 @@
 | TicketCount | Number |
 | TicketsIncluded | Multiple lines text |
 | EmailStatus | Choice (Sent, Bounced, Opened) |
+
 
 ---
